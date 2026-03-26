@@ -1,0 +1,75 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8080:8080"
+    environment:
+      - AGENTOS_ENV=production
+      - AGENTOS_SECRET_KEY=${AGENTOS_SECRET_KEY}
+      - AGENTOS_ADMIN_PASSWORD=${AGENTOS_ADMIN_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AGENTOS_LOG_PAYLOADS=${AGENTOS_LOG_PAYLOADS:-false}
+      - AGENTOS_POLICY_PATH=/app/policies/default.yaml
+      - AGENTOS_LOG_LEVEL=${AGENTOS_LOG_LEVEL:-INFO}
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - agentos_runs:/app/runs
+      - agentos_reports:/app/reports
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["celery", "-A", "agentos.celery_app:celery_app", "worker", "-l", "info"]
+    environment:
+      - AGENTOS_ENV=production
+      - AGENTOS_SECRET_KEY=${AGENTOS_SECRET_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - AGENTOS_POLICY_PATH=/app/policies/default.yaml
+    volumes:
+      - agentos_runs:/app/runs
+      - agentos_reports:/app/reports
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  agentos_runs:
+  agentos_reports:
+  redis_data:

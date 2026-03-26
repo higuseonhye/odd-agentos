@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentos"
+version = "0.1.0"
+description = "AgentOS — replayable agent runtime, policy engine, and control API"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0,<4",
+    "flask-cors>=4.0,<5",
+    "pyyaml>=6.0,<7",
+    "celery>=5.3,<6",
+    "redis>=5.0,<8",
+    "requests>=2.31,<3",
+    "pydantic>=2.0,<3",
+    "openai>=1.0,<3",
+    "gunicorn>=23.0,<24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+# pip may warn: script installed but not on PATH (common with `pip install --user` on Windows).
+# Use: python -m agentos …   or add Python's Scripts folder to PATH (see pip output for the path).
+[project.scripts]
+agentos = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentos*"]
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "agentos-sdk/tests"]
+pythonpath = [".", "agentos-sdk/src"]

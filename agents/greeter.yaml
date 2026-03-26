@@ -1,0 +1,4 @@
+# Example agent metadata (referenced by workflows / future registry)
+name: greeter
+description: Deterministic greeting stub
+tags: []

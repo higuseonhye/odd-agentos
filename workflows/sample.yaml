@@ -1,0 +1,14 @@
+name: sample
+steps:
+  - id: greet
+    agent: greeter
+    agent_tags: []
+    risk_level: low
+    input: "world"
+    requires_approval: false
+  - id: summarize
+    agent: summarizer
+    agent_tags: []
+    risk_level: medium
+    input: "Summarize: hello"
+    requires_approval: true

@@ -1,0 +1,25 @@
+# Policy schema v2.0 — backward compatible with v1 deny/approval lists.
+version: "2.0"
+
+# v1-style lists (still supported)
+deny_agents: []
+approval_required_agents: []
+
+rules:
+  - id: block-financial-actions
+    description: "Block any agent that touches financial data"
+    condition:
+      agent_tags_include: ["financial", "payment"]
+    action: deny
+    reason: "Financial actions require compliance review"
+
+  - id: require-approval-high-risk
+    condition:
+      risk_level_gte: high
+    action: require_approval
+    notify: ["admin@company.com"]
+
+  - id: rate-limit-external-calls
+    condition:
+      tool_calls_per_minute_gt: 10
+    action: pause_and_alert

@@ -1,0 +1,23 @@
+# Multi-stage production image: API + Celery worker base
+FROM python:3.12-slim AS deps
+WORKDIR /app
+RUN pip install --no-cache-dir --upgrade pip wheel
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.12-slim AS runtime
+WORKDIR /app
+RUN useradd -m -u 1000 agentos
+COPY --from=deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=deps /usr/local/bin /usr/local/bin
+COPY agentos ./agentos
+COPY main.py .
+COPY policies ./policies
+COPY workflows ./workflows
+RUN mkdir -p runs reports && chown -R agentos:agentos /app
+USER agentos
+ENV PYTHONPATH=/app
+ENV AGENTOS_ENV=production
+EXPOSE 8080
+# Production WSGI (override with ``python -m agentos.server`` for dev-style bind)
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "--timeout", "120", "agentos.server.app:app"]

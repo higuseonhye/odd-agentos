@@ -1,0 +1,11 @@
+# Aligned with pyproject.toml — used by Docker images.
+flask>=3.0,<4
+flask-cors>=4.0,<5
+pyyaml>=6.0,<7
+celery>=5.3,<6
+redis>=5.0,<8
+requests>=2.31,<3
+pydantic>=2.0,<3
+openai>=1.0,<3
+gunicorn>=23.0,<24
+pytest>=8.0,<10
