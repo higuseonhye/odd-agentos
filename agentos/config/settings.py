@@ -52,6 +52,8 @@ POLICY_PATH = _env_path(
 
 # --- Identity & secrets
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+# If true, workflow steps always use the deterministic stub (ignore OPENAI_API_KEY).
+AGENTOS_FORCE_STUB = _env_bool("AGENTOS_FORCE_STUB", False)
 AGENTOS_LOG_PAYLOADS = _env_bool("AGENTOS_LOG_PAYLOADS", False)
 AGENTOS_TENANT_ID = os.environ.get("AGENTOS_TENANT_ID", "default")
 SECRET_KEY = os.environ.get("AGENTOS_SECRET_KEY", "dev-change-me")

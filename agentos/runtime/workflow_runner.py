@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -12,8 +13,10 @@ from typing import Any
 import yaml
 
 from agentos.config import settings
+from agentos.runtime import llm_step
 from agentos.runtime.policy_engine import PolicyAction, PolicyEngine, StepContext
 
+log = logging.getLogger(__name__)
 
 SCHEMA_VERSION = "1.0"
 
@@ -78,9 +81,29 @@ def _execute_agent_step(
     inp: Any,
     resolved_vars: dict[str, Any],
 ) -> tuple[Any, list[dict[str, Any]], str | None, str | None]:
-    """Deterministic stub execution (replace with real LLM/tools)."""
-    out = f"[{agent_name}] {inp!s}"
+    """
+    Run a step: OpenAI chat when ``OPENAI_API_KEY`` is set (unless ``AGENTOS_FORCE_STUB``),
+    otherwise deterministic stub (no network).
+    """
     tool_calls: list[dict[str, Any]] = []
+    if llm_step.should_use_openai():
+        try:
+            out, prompt, response = llm_step.run_openai_chat(
+                agent_name,
+                inp,
+                log_payloads=settings.AGENTOS_LOG_PAYLOADS,
+            )
+            if not settings.AGENTOS_LOG_PAYLOADS:
+                prompt = None
+                response = None
+            return out, tool_calls, prompt, response
+        except Exception as e:  # noqa: BLE001
+            log.warning(
+                "OpenAI step failed for %s, falling back to stub: %s",
+                agent_name,
+                e,
+            )
+    out = f"[{agent_name}] {inp!s}"
     prompt = None
     response = None
     if settings.AGENTOS_LOG_PAYLOADS:
