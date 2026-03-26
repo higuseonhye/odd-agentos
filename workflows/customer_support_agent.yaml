@@ -1,0 +1,16 @@
+# Fast, low-risk support path — no approval gates (policy allows low/medium).
+name: customer_support
+steps:
+  - id: classify
+    agent: support_bot
+    agent_tags: ["support", "cx"]
+    risk_level: low
+    input: "Classify ticket intent from subject and first message"
+    requires_approval: false
+
+  - id: draft_reply
+    agent: support_bot
+    agent_tags: ["support", "cx"]
+    risk_level: low
+    input: "Draft a concise customer reply"
+    requires_approval: false

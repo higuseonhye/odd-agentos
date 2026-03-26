@@ -1,0 +1,24 @@
+# High-stakes financial workflow: compliance-sensitive, human approval on export.
+name: financial_report
+steps:
+  - id: gather_ledger
+    agent: ledger_analyst
+    agent_tags: ["financial"]
+    risk_level: medium
+    input: "Pull Q4 GL balances and reconciliations"
+    requires_approval: false
+
+  - id: draft_filing
+    agent: ledger_analyst
+    agent_tags: ["financial"]
+    risk_level: high
+    input: "Draft management narrative and footnotes"
+    requires_approval: true
+
+  - id: export_pdf
+    agent: ledger_analyst
+    # Tags trigger policy deny if both financial+payment — omit payment here for normal path
+    agent_tags: ["financial"]
+    risk_level: high
+    input: "Generate investor-ready PDF package"
+    requires_approval: true

@@ -1,0 +1,23 @@
+# Multi-step ETL — failure often surfaces at transform.
+name: data_pipeline
+steps:
+  - id: extract
+    agent: pipeline_etl
+    agent_tags: ["etl", "data"]
+    risk_level: low
+    input: "Extract raw rows from source connector"
+    requires_approval: false
+
+  - id: transform
+    agent: pipeline_etl
+    agent_tags: ["etl", "data"]
+    risk_level: medium
+    input: "Apply schema mapping and deduplication"
+    requires_approval: false
+
+  - id: load
+    agent: pipeline_etl
+    agent_tags: ["etl", "data"]
+    risk_level: medium
+    input: "Load into warehouse staging table"
+    requires_approval: false

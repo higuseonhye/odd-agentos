@@ -3,19 +3,23 @@ import { apiFetch } from '../lib/api'
 
 /** Reliability card from GET /api/reliability/:agent_name */
 export function ReliabilityCardsPage() {
-  const [agent, setAgent] = useState('greeter')
+  const [agent, setAgent] = useState('support_bot')
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [card, setCard] = useState<Record<string, unknown> | null>(null)
 
-  async function loadCard() {
+  async function loadCard(nameOverride?: string) {
+    const name = nameOverride ?? agent
+    if (nameOverride !== undefined) {
+      setAgent(nameOverride)
+    }
     setLoading(true)
     setError(null)
     setCard(null)
     try {
       const r = await apiFetch(
-        `/api/reliability/${encodeURIComponent(agent)}?days=${days}`,
+        `/api/reliability/${encodeURIComponent(name)}?days=${days}`,
       )
       if (!r.ok) throw new Error(await r.text())
       setCard((await r.json()) as Record<string, unknown>)
@@ -31,7 +35,10 @@ export function ReliabilityCardsPage() {
       <header className="border-b border-[var(--color-agentos-border)] bg-[var(--color-agentos-surface)]/80 px-8 py-6 backdrop-blur-sm">
         <h1 className="text-xl font-semibold tracking-tight">Reliability cards</h1>
         <p className="mt-1 text-sm text-[var(--color-agentos-muted)]">
-          Trust score and metrics for an agent over a rolling window.
+          Trust score and metrics for an agent over a rolling window. After{' '}
+          <code className="font-mono text-xs">python scripts/seed_demo_data.py</code>, try{' '}
+          <code className="font-mono text-xs">support_bot</code> or{' '}
+          <code className="font-mono text-xs">ledger_analyst</code>.
         </p>
       </header>
       <main className="flex-1 px-8 py-6">
@@ -63,6 +70,19 @@ export function ReliabilityCardsPage() {
           >
             {loading ? 'Loading…' : 'Load card'}
           </button>
+          <div className="flex flex-wrap gap-2">
+            <span className="self-center text-xs text-[var(--color-agentos-muted)]">Presets:</span>
+            {(['support_bot', 'ledger_analyst'] as const).map((a) => (
+              <button
+                key={a}
+                type="button"
+                className="rounded-md border border-[var(--color-agentos-border)] px-2 py-1 font-mono text-xs text-[var(--color-agentos-fg)]"
+                onClick={() => void loadCard(a)}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
         </div>
         {error && (
           <p className="mb-4 text-sm text-red-400" role="alert">
