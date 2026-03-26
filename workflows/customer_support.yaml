@@ -1,0 +1,15 @@
+name: customer_support
+steps:
+  - id: classify_ticket
+    agent: ticket-classifier
+    agent_tags: ["support", "cx"]
+    risk_level: low
+    input: "Infer intent and priority from ticket #48291 subject and first customer message"
+    requires_approval: false
+
+  - id: resolve_ticket
+    agent: support-resolver
+    agent_tags: ["support", "cx"]
+    risk_level: low
+    input: "Draft a resolution with refund policy line items and next steps for billing dispute"
+    requires_approval: false

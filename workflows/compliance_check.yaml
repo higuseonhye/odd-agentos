@@ -1,0 +1,29 @@
+name: compliance_check
+steps:
+  - id: scan_docs
+    agent: doc-scanner
+    agent_tags: ["compliance", "pii"]
+    risk_level: low
+    input: "OCR and index vendor contracts uploaded to vault /legal/vendors/2025-Q1"
+    requires_approval: false
+
+  - id: flag_violations
+    agent: compliance-checker
+    agent_tags: ["compliance"]
+    risk_level: high
+    input: "Compare indexed clauses against GDPR retention and subprocessors schedule v3.2"
+    requires_approval: true
+
+  - id: generate_report
+    agent: report-generator
+    agent_tags: ["compliance"]
+    risk_level: medium
+    input: "Compile findings into audit-ready Markdown with severity and remediation IDs"
+    requires_approval: false
+
+  - id: notify_team
+    agent: notifier
+    agent_tags: ["compliance"]
+    risk_level: low
+    input: "Post summary to #compliance-alerts with links to evidence artifacts"
+    requires_approval: false

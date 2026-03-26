@@ -1,0 +1,22 @@
+name: financial_report
+steps:
+  - id: fetch_data
+    agent: data-fetcher
+    agent_tags: []
+    risk_level: low
+    input: "Pull GL balances and cash positions for entities US-001 through US-042 for Q4 FY25"
+    requires_approval: false
+
+  - id: analyze_risk
+    agent: financial-analyst
+    agent_tags: ["financial"]
+    risk_level: high
+    input: "Score counterparty exposure vs. policy limits using fetched ledger and recent market stress scenarios"
+    requires_approval: true
+
+  - id: send_report
+    agent: report-sender
+    agent_tags: []
+    risk_level: low
+    input: "Deliver finalized PDF and CSV package to CFO workspace and archive under SOX retention"
+    requires_approval: false

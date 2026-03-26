@@ -228,12 +228,12 @@ def _pipeline_completed(run_id: str, started_at: str) -> None:
     p = _wf("data_pipeline_agent.yaml")
     events = [
         {"type": "run_started", "workflow": "data_pipeline", "path": p},
-        {"type": "step_started", "step_id": "extract", "agent": "pipeline_etl"},
-        {"type": "step_completed", "step_id": "extract", "agent": "pipeline_etl", "output": "42 rows"},
-        {"type": "step_started", "step_id": "transform", "agent": "pipeline_etl"},
-        {"type": "step_completed", "step_id": "transform", "agent": "pipeline_etl", "output": "40 rows"},
-        {"type": "step_started", "step_id": "load", "agent": "pipeline_etl"},
-        {"type": "step_completed", "step_id": "load", "agent": "pipeline_etl", "output": "staging_ok"},
+        {"type": "step_started", "step_id": "extract", "agent": "data-pipeline"},
+        {"type": "step_completed", "step_id": "extract", "agent": "data-pipeline", "output": "42 rows"},
+        {"type": "step_started", "step_id": "transform", "agent": "data-pipeline"},
+        {"type": "step_completed", "step_id": "transform", "agent": "data-pipeline", "output": "40 rows"},
+        {"type": "step_started", "step_id": "load", "agent": "data-pipeline"},
+        {"type": "step_completed", "step_id": "load", "agent": "data-pipeline", "output": "staging_ok"},
         {"type": "run_completed"},
     ]
     _write_run(
@@ -252,9 +252,9 @@ def _pipeline_failed_transform(run_id: str, started_at: str) -> None:
     p = _wf("data_pipeline_agent.yaml")
     events = [
         {"type": "run_started", "workflow": "data_pipeline", "path": p},
-        {"type": "step_started", "step_id": "extract", "agent": "pipeline_etl"},
-        {"type": "step_completed", "step_id": "extract", "agent": "pipeline_etl", "output": "99 rows"},
-        {"type": "step_started", "step_id": "transform", "agent": "pipeline_etl"},
+        {"type": "step_started", "step_id": "extract", "agent": "data-pipeline"},
+        {"type": "step_completed", "step_id": "extract", "agent": "data-pipeline", "output": "99 rows"},
+        {"type": "step_started", "step_id": "transform", "agent": "data-pipeline"},
         {"type": "step_failed", "step_id": "transform", "error": "schema drift: column revenue_usd missing"},
         {"type": "run_failed", "reason": "schema drift: column revenue_usd missing"},
     ]
@@ -278,11 +278,11 @@ def _pipeline_failed_load(run_id: str, started_at: str) -> None:
     p = _wf("data_pipeline_agent.yaml")
     events = [
         {"type": "run_started", "workflow": "data_pipeline", "path": p},
-        {"type": "step_started", "step_id": "extract", "agent": "pipeline_etl"},
-        {"type": "step_completed", "step_id": "extract", "agent": "pipeline_etl", "output": "1k rows"},
-        {"type": "step_started", "step_id": "transform", "agent": "pipeline_etl"},
-        {"type": "step_completed", "step_id": "transform", "agent": "pipeline_etl", "output": "998 rows"},
-        {"type": "step_started", "step_id": "load", "agent": "pipeline_etl"},
+        {"type": "step_started", "step_id": "extract", "agent": "data-pipeline"},
+        {"type": "step_completed", "step_id": "extract", "agent": "data-pipeline", "output": "1k rows"},
+        {"type": "step_started", "step_id": "transform", "agent": "data-pipeline"},
+        {"type": "step_completed", "step_id": "transform", "agent": "data-pipeline", "output": "998 rows"},
+        {"type": "step_started", "step_id": "load", "agent": "data-pipeline"},
         {"type": "step_failed", "step_id": "load", "error": "warehouse connection reset"},
         {"type": "run_failed", "reason": "warehouse connection reset"},
     ]
