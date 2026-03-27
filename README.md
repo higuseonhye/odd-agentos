@@ -1,115 +1,170 @@
-# AgentOS (ODD PLAYGROUND)
+# AgentOS
 
-Self-evolving operating infrastructure for AI agents: replayable runs, policy gates, and human approvals. See `agentos_product_brief.md` for the full product spec.
+**Replay, debug, and govern AI agents in production.**
 
-## Golden path (about 5 minutes, local)
+When your agent fails mid-run, AgentOS tells you exactly which step broke — and lets you re-run from that point without starting over.
 
-Do these steps **in order** from the repo root (`odd-agentos`). Use **two terminals**.
+---
 
-### 1. Install Python deps
+## Start in 30 seconds
 
-```powershell
-cd c:\projects\odd-agentos
-pip install -e ".[dev]"
-pip install -e "./agentos-sdk[dev]"
+```bash
+pip install agentos
+agentos init
+agentos run workflows/sample.yaml
 ```
 
-### 2. Terminal A — API on port 8080
+Open **http://localhost:8080** → your run appears instantly.
 
-```powershell
-cd c:\projects\odd-agentos
-python -m agentos.server
+> No Redis. No Docker. No second terminal. Just Python.
+
+---
+
+## What it solves
+
+| Problem | What AgentOS does |
+|---------|------------------|
+| Agent fails — no idea why | Step-by-step audit log + System MRI diagnosis |
+| Have to restart from scratch | Replay from any failed step |
+| No human oversight on risky actions | Approve / Deny gates in the dashboard |
+| Can't prove what the agent did | Immutable event log (`events.jsonl`) |
+
+---
+
+## How it works
+
+```
+your workflow.yaml
+      │
+      ▼
+ AgentOS Runtime
+  ├── runs each step
+  ├── saves a snapshot after every step
+  ├── checks policy rules before risky steps
+  ├── pauses for human approval when needed
+  └── logs everything to events.jsonl
+      │
+      ▼
+ Dashboard (http://localhost:8080)
+  ├── See run status live
+  ├── Approve / Deny pending steps
+  ├── Click "Replay from here" on any failed step
+  └── Run System MRI to get a diagnosis report
 ```
 
-Leave this running. Check: [http://localhost:8080/api/health](http://localhost:8080/api/health) should return JSON with `"status":"ok"`.
-
-### 3. Terminal B — dashboard (Vite proxies `/api` → `localhost:8080`)
-
-```powershell
-cd c:\projects\odd-agentos\dashboard
-npm install
-npm run dev
-```
-
-Open the URL Vite prints (usually **http://localhost:5173**).
-
-### 4. Run the demo
-
-1. In the UI, click **New run** and keep the default workflow path **`workflows/sample.yaml`** (or enter that exact path). Start the run.
-2. You should land on the run detail page. **Step 1** (`greet`) completes automatically; **Step 2** (`summarize`) waits for **approval**.
-3. Click **Approve** (and **System MRI** if you want a diagnosis JSON).
-4. **Runs** list should show the run as **completed**; **Audit log** shows `events.jsonl`-style events.
-
-**CLI equivalent (optional):**
-
-```powershell
-cd c:\projects\odd-agentos
-python -m agentos run workflows/sample.yaml
-```
-
-If the run stops at approval, use the dashboard to approve, or use the API (`POST /api/runs/.../approve/...`).
-
-### Optional: real OpenAI for step outputs
-
-If **`OPENAI_API_KEY`** is set in the environment, workflow steps use the **OpenAI API** (model `gpt-4o-mini` by default). Set **`AGENTOS_FORCE_STUB=true`** to always use the deterministic stub (no network). See `.env.example`.
-
-## Quick start (short)
-
-```powershell
-cd c:\projects\odd-agentos
-pip install -e ".[dev]"
-pip install -e "./agentos-sdk[dev]"
-
-# Terminal 1 — API
-python -m agentos.server
-
-# Terminal 2 — dashboard
-cd dashboard
-npm install
-npm run dev
-```
-
-Open the Vite URL (e.g. http://localhost:5173). API health: http://localhost:8080/api/health
+---
 
 ## CLI
 
-```powershell
-python -m agentos --help
-python -m agentos run workflows/sample.yaml
+```bash
+agentos init                          # scaffold a new project
+agentos run workflows/sample.yaml     # start a run
+agentos retry <run_id>                # retry from the failed step
+agentos replay <run_id> --from-step summarize   # replay from a specific step
+agentos diagnose <run_id>             # get a System MRI report
+agentos reliability <agent_name>      # generate a trust score card
 ```
 
-## Tests
+---
 
-```powershell
-python -m pytest tests agentos-sdk/tests -v
+## Example workflow
+
+```yaml
+# workflows/sample.yaml
+name: sample
+steps:
+  - id: greet
+    agent: greeter
+    risk_level: low
+    input: "world"
+    requires_approval: false
+
+  - id: summarize
+    agent: summarizer
+    risk_level: medium
+    input: "Summarize: hello"
+    requires_approval: true   # pauses for human approval
 ```
 
-## Docker (production-style)
+Run it:
 
-```powershell
+```bash
+agentos run workflows/sample.yaml
+# → greet completes automatically
+# → summarize pauses — open dashboard to Approve or Deny
+```
+
+---
+
+## Policy rules (YAML)
+
+Control what agents can do without touching code:
+
+```yaml
+# policies/default.yaml
+rules:
+  - id: block-payments
+    condition:
+      agent_tags_include: ["payment"]
+    action: deny
+    reason: "Payment actions require compliance review"
+
+  - id: approve-high-risk
+    condition:
+      risk_level_gte: high
+    action: require_approval
+```
+
+---
+
+## SDK
+
+```bash
+pip install agentos-sdk
+```
+
+```python
+from agentos_sdk import AgentOS
+
+client = AgentOS(project="my-project")
+run_id = client.run("workflows/sample.yaml")
+report = client.diagnose(run_id)
+```
+
+Decorator for existing functions:
+
+```python
+from agentos_sdk.decorators import trace
+
+@trace(requires_approval=True, risk_level="high")
+def my_agent(input: str) -> str:
+    ...
+```
+
+---
+
+## Docker (production)
+
+```bash
 make prod
 # or: docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-In containers, use workflow paths under **`/app/workflows/...`** (see `Dockerfile.api`).
+---
 
-## GitHub: first push
+## Roadmap
 
-1. Create an empty repository on GitHub (same name as your folder, e.g. `odd-agentos`), **without** adding a README if you already committed locally.
-2. Point `origin` at the correct URL (fix username/repo if needed):
+- [x] YAML workflow runner
+- [x] Human-in-the-loop approval gates
+- [x] Replay from any step
+- [x] System MRI failure diagnosis
+- [x] Reliability Card (agent trust score)
+- [x] Policy engine (YAML rules)
+- [ ] `pip install agentos` one-liner (coming soon)
+- [ ] Hosted cloud version
 
-   ```powershell
-   git remote set-url origin https://github.com/<YOUR_USER>/odd-agentos.git
-   ```
-
-3. Push (HTTPS may require a [Personal Access Token](https://github.com/settings/tokens) instead of a password):
-
-   ```powershell
-   git push -u origin main
-   ```
-
-If you see `Repository not found`, the repo does not exist yet, the URL is wrong, or you are not authenticated.
+---
 
 ## License
 
-Proprietary / ODD PLAYGROUND — adjust as needed.
+Proprietary / ODD PLAYGROUND
