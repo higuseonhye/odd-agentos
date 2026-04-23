@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from typing import Any
 import yaml
 
 from agentos.config import settings
+from agentos.observability import obs
 from agentos.runtime import llm_step
 from agentos.runtime.policy_engine import PolicyAction, PolicyEngine, StepContext
 
@@ -103,7 +105,17 @@ def _execute_agent_step(
                 agent_name,
                 e,
             )
+
+    # stub 경로 — LLM call 없이 deterministic 응답, 계측은 동일하게
+    _t0 = time.perf_counter()
     out = f"[{agent_name}] {inp!s}"
+    obs.record_llm_call(
+        model="stub",
+        policy=agent_name,
+        latency_ms=(time.perf_counter() - _t0) * 1000,
+        status="success",
+    )
+
     prompt = None
     response = None
     if settings.AGENTOS_LOG_PAYLOADS:
@@ -284,6 +296,7 @@ class WorkflowRunner:
             run_id,
             {"type": "step_started", "step_id": sid, "agent": agent},
         )
+        _t0 = time.perf_counter()
         try:
             out, tool_calls, prompt, response = _execute_agent_step(agent, inp, resolved_vars)
         except Exception as e:  # noqa: BLE001
@@ -302,6 +315,15 @@ class WorkflowRunner:
             )
             _append_event(run_id, {"type": "run_failed", "reason": str(e)})
             return
+
+        step_latency_ms = (time.perf_counter() - _t0) * 1000
+        obs.record_decision(
+            decision_id=f"{run_id}/{sid}",
+            outcome="completed",
+            confidence=1.0,
+            policy=agent,
+            latency_ms=step_latency_ms,
+        )
 
         snap = StepSnapshot(
             step_id=sid,

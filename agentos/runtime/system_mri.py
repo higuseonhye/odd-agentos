@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from agentos.config import settings
+from agentos.observability import obs, track_decision
 
 try:
     from openai import OpenAI
@@ -75,6 +77,15 @@ class FailureAnalyzer:
             confidence=min(1.0, conf),
             generated_at=datetime.now(timezone.utc).isoformat(),
         )
+
+        track_decision(
+            decision_id=self.run_id,
+            outcome=ftype,
+            confidence=rep.confidence,
+            policy="system_mri",
+            latency_ms=0.0,
+        )
+
         diag_path = _run_dir(self.run_id) / "diagnosis.json"
         diag_path.parent.mkdir(parents=True, exist_ok=True)
         diag_path.write_text(json.dumps(rep.to_dict(), indent=2), encoding="utf-8")
@@ -151,21 +162,41 @@ class FailureAnalyzer:
             return None
         try:
             client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You improve diagnostic text for engineers. Reply JSON only: "
-                        '{"root_cause": str, "suggested_fixes": [str], "confidence": float}',
-                    },
-                    {
-                        "role": "user",
-                        "content": f"type={ftype}\nevents={json.dumps(events)[:8000]}",
-                    },
-                ],
-                temperature=0.2,
-            )
+            _t0 = time.perf_counter()
+            try:
+                resp = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You improve diagnostic text for engineers. Reply JSON only: "
+                            '{"root_cause": str, "suggested_fixes": [str], "confidence": float}',
+                        },
+                        {
+                            "role": "user",
+                            "content": f"type={ftype}\nevents={json.dumps(events)[:8000]}",
+                        },
+                    ],
+                    temperature=0.2,
+                )
+                obs.record_llm_call(
+                    model="gpt-4o-mini",
+                    policy="system_mri",
+                    latency_ms=(time.perf_counter() - _t0) * 1000,
+                    status="success",
+                    tokens_in=resp.usage.prompt_tokens,
+                    tokens_out=resp.usage.completion_tokens,
+                )
+            except Exception as exc:
+                obs.record_llm_call(
+                    model="gpt-4o-mini",
+                    policy="system_mri",
+                    latency_ms=(time.perf_counter() - _t0) * 1000,
+                    status="error",
+                    error=str(exc),
+                )
+                return None
+
             raw = resp.choices[0].message.content or "{}"
             data = json.loads(raw)
             return (

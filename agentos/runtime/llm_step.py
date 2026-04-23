@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any
 
 from agentos.config import settings
+from agentos.observability import obs
 
 log = logging.getLogger(__name__)
 
@@ -39,15 +41,36 @@ def run_openai_chat(
     )
     user = str(user_input)
     model = _model_name()
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.3,
-        max_tokens=1024,
-    )
+
+    _t0 = time.perf_counter()
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.3,
+            max_tokens=1024,
+        )
+        obs.record_llm_call(
+            model=model,
+            policy=agent_name,
+            latency_ms=(time.perf_counter() - _t0) * 1000,
+            status="success",
+            tokens_in=resp.usage.prompt_tokens,
+            tokens_out=resp.usage.completion_tokens,
+        )
+    except Exception as exc:
+        obs.record_llm_call(
+            model=model,
+            policy=agent_name,
+            latency_ms=(time.perf_counter() - _t0) * 1000,
+            status="error",
+            error=str(exc),
+        )
+        raise
+
     choice = resp.choices[0].message
     text = (choice.content or "").strip()
     out = text or f"[{agent_name}] (empty model output)"
